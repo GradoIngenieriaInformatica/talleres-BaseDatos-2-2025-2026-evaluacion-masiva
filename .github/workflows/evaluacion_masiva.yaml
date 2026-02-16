@@ -30,7 +30,7 @@ jobs:
         run: python evaluar_masivo.py
 
       - name: Subir resumen
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: resumen-evaluacion
           path: resumen_final.csv
