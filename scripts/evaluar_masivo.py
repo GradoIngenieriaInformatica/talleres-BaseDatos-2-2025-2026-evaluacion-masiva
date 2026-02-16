@@ -70,7 +70,7 @@ repos_filtrados = [r["name"] for r in repos if PREFIX in r["name"]]
 # Crear diccionario de repos por login correctamente
 repos_dict = {}
 for login in alumnos:
-    repo_name = f"{PREFIX_REPO}{login}"
+    repo_name = f"{PREFIX}{login}"
     repos_dict[login] = repo_name
     print("Repo esperado:", repo_name)
 
