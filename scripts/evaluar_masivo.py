@@ -34,12 +34,10 @@ for linea in reader:
 
     nombre, numero, grupo, github = [x.strip() for x in linea[:4]]
 
-    # Saltar alumnos sin github
     if not github:
         print(f"Alumno sin github, se salta: {nombre} ({numero})")
         continue
 
-    # Saltar alumnos sin grupo
     if grupo.lower() in ("", "null"):
         print(f"Alumno sin grupo asignado, se salta: {nombre} ({github})")
         continue
@@ -67,13 +65,12 @@ except subprocess.CalledProcessError as e:
 repos = json.loads(repos_json)
 repos_filtrados = [r["name"] for r in repos if PREFIX in r["name"]]
 
-# Crear diccionario de repos por login correctamente
+# Crear diccionario de repos por login
 repos_dict = {}
-for login in alumnos:
-    repo_name = f"{PREFIX}-{login}"
-    repos_dict[login] = repo_name
+for github_login in alumnos:
+    repo_name = f"{PREFIX}-{github_login}"
+    repos_dict[github_login] = repo_name
     print("Repo esperado:", repo_name)
-
 
 resultados = []
 
@@ -85,8 +82,8 @@ for github_login, info in alumnos.items():
     grupo = info["grupo"]
     numero = info["numero"]
 
-    if github_login not in repos_dict:
-        # Alumno no subió repositorio
+    repo = repos_dict.get(github_login)
+    if not repo or repo not in repos_filtrados:
         resultados.append({
             "repo": "",
             "login": github_login,
@@ -96,7 +93,6 @@ for github_login, info in alumnos.items():
         })
         continue
 
-    repo = repos_dict[github_login]
     print(f"Evaluando: {repo}")
 
     # Clonar repo
@@ -114,50 +110,46 @@ for github_login, info in alumnos.items():
         })
         continue
 
+    # Ruta de la carpeta de respuestas
     path_respuestas = path_repo / "respuestas"
     if not path_respuestas.exists():
         estado = "REPROBADO"
         motivo = "NO_EXISTE_CARPETA_RESPUESTAS"
     else:
-        archivos = list(path_respuestas.glob("*.txt"))
+        correctos = 0
+        errores = []
 
-        if len(archivos) != 3:
-            estado = "REPROBADO"
-            motivo = "CANTIDAD_RESPUESTAS_INCORRECTA"
+        for i in range(1, 4):
+            archivo = path_respuestas / f"respuesta_{i}.txt"
+
+            if not archivo.exists():
+                errores.append(f"RESPUESTA_{i}_NO_EXISTE")
+                continue
+
+            texto = archivo.read_text(encoding="utf-8").lower().strip()
+
+            if len(texto) < 20:
+                errores.append(f"RESPUESTA_{i}_MUY_CORTA")
+                continue
+
+            esperado = RESPUESTAS[grupo][i - 1]
+
+            if esperado["tipo"].lower() not in texto:
+                errores.append(f"RESPUESTA_{i}_TIPO_INCORRECTO")
+                continue
+
+            if not any(p.lower() in texto for p in esperado["keywords"]):
+                errores.append(f"RESPUESTA_{i}_CONTENIDO_INCORRECTO")
+                continue
+
+            correctos += 1
+
+        if correctos == 3:
+            estado = "APROBADO"
+            motivo = "OK"
         else:
-            correctos = 0
-            errores = []
-
-            for i in range(1, 4):
-                archivo = path_respuestas / f"respuesta{i}.txt"
-                if not archivo.exists():
-                    errores.append(f"RESPUESTA_{i}_NO_EXISTE")
-                    continue
-
-                texto = archivo.read_text(encoding="utf-8").lower().strip()
-
-                if len(texto) < 20:
-                    errores.append(f"RESPUESTA_{i}_MUY_CORTA")
-                    continue
-
-                esperado = RESPUESTAS[grupo][i - 1]
-
-                if esperado["tipo"].lower() not in texto:
-                    errores.append(f"RESPUESTA_{i}_TIPO_INCORRECTO")
-                    continue
-
-                if not any(p.lower() in texto for p in esperado["keywords"]):
-                    errores.append(f"RESPUESTA_{i}_CONTENIDO_INCORRECTO")
-                    continue
-
-                correctos += 1
-
-            if correctos == 3:
-                estado = "APROBADO"
-                motivo = "OK"
-            else:
-                estado = "REPROBADO"
-                motivo = "; ".join(errores)
+            estado = "REPROBADO"
+            motivo = "; ".join(errores)
 
     resultados.append({
         "repo": repo,
@@ -197,8 +189,6 @@ with open("resumen_final.csv", "w", newline="", encoding="utf-8") as f:
         fieldnames=["repo", "login", "grupo", "estado", "motivo"]
     )
     writer.writeheader()
-    for r in resultados:
-        print(r)
     writer.writerows(resultados)
 
 print("Evaluación completada")
