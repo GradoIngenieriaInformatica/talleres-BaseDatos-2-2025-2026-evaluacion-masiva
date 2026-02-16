@@ -8,7 +8,7 @@ import io
 # -----------------------------
 # Configuración
 # -----------------------------
-ORG = "GradoIngenieriaInformatica"  # Corregido, nombre real de la organización
+ORG = "GradoIngenieriaInformatica"  # Organización real
 PREFIX = "Análisis y Selección de Bases de Datos NoSQL"
 
 # -----------------------------
@@ -44,7 +44,7 @@ for linea in reader:
         print(f"Alumno sin grupo asignado, se salta: {nombre} ({github})")
         continue
 
-    alumnos[github] = {
+    alumnos[github.lower()] = {
         "nombre": nombre,
         "numero": numero,
         "grupo": grupo.upper()
@@ -57,7 +57,7 @@ print(f"Alumnos válidos cargados: {len(alumnos)}")
 # -----------------------------
 try:
     repos_json = subprocess.check_output(
-        ["gh", "repo", "list", ORG, "--limit", "200", "--json", "name"],
+        ["gh", "repo", "list", ORG, "--limit", "500", "--json", "name"],
         text=True
     )
 except subprocess.CalledProcessError as e:
@@ -67,45 +67,52 @@ except subprocess.CalledProcessError as e:
 repos = json.loads(repos_json)
 repos_filtrados = [r["name"] for r in repos if PREFIX in r["name"]]
 
+# Crear un diccionario de repos por login
+repos_dict = {}
+for r in repos_filtrados:
+    login = r.split("-")[-1].lower()  # detectar login
+    repos_dict[login] = r
+
 resultados = []
 
 # -----------------------------
-# Evaluar cada repo
+# Evaluar cada alumno registrado
 # -----------------------------
-for repo in repos_filtrados:
+for github_login, info in alumnos.items():
+    nombre = info["nombre"]
+    grupo = info["grupo"]
+    numero = info["numero"]
 
-    print("Evaluando:", repo)
+    if github_login not in repos_dict:
+        # Alumno no subió repositorio
+        resultados.append({
+            "repo": "",
+            "login": github_login,
+            "grupo": grupo,
+            "estado": "REPROBADO",
+            "motivo": "REPO_NO_SUBIDO"
+        })
+        continue
+
+    repo = repos_dict[github_login]
+    print(f"Evaluando: {repo}")
+
     # Clonar repo
+    path_repo = Path(repo)
     try:
         subprocess.run(["gh", "repo", "clone", f"{ORG}/{repo}"], check=True)
     except subprocess.CalledProcessError:
-        print(f"Error al clonar repo: {repo}, se salta")
+        print(f"Error al clonar repo: {repo}")
         resultados.append({
             "repo": repo,
-            "login": "DESCONOCIDO",
-            "grupo": "DESCONOCIDO",
+            "login": github_login,
+            "grupo": grupo,
             "estado": "REPROBADO",
             "motivo": "ERROR_CLONAR_REPO"
         })
         continue
 
-    login = repo.split("-")[-1]
-
-    if login not in alumnos:
-        print(f"Alumno no registrado en CSV: {login}")
-        resultados.append({
-            "repo": repo,
-            "login": login,
-            "grupo": "NO_REGISTRADO",
-            "estado": "REPROBADO",
-            "motivo": "LOGIN_NO_ENCONTRADO"
-        })
-        continue
-
-    grupo = alumnos[login]["grupo"]
-    path_repo = Path(repo)
     path_respuestas = path_repo / "respuestas"
-
     if not path_respuestas.exists():
         estado = "REPROBADO"
         motivo = "NO_EXISTE_CARPETA_RESPUESTAS"
@@ -121,7 +128,6 @@ for repo in repos_filtrados:
 
             for i in range(1, 4):
                 archivo = path_respuestas / f"respuesta{i}.txt"
-
                 if not archivo.exists():
                     errores.append(f"RESPUESTA_{i}_NO_EXISTE")
                     continue
@@ -153,15 +159,13 @@ for repo in repos_filtrados:
 
     resultados.append({
         "repo": repo,
-        "login": login,
+        "login": github_login,
         "grupo": grupo,
         "estado": estado,
         "motivo": motivo
     })
 
-    # -----------------------------
     # Crear Issue automático
-    # -----------------------------
     cuerpo = f"""
 ### Resultado Evaluación Oficial
 
@@ -191,6 +195,8 @@ with open("resumen_final.csv", "w", newline="", encoding="utf-8") as f:
         fieldnames=["repo", "login", "grupo", "estado", "motivo"]
     )
     writer.writeheader()
+    for r in resultados:
+        print(r)
     writer.writerows(resultados)
 
 print("Evaluación completada")
