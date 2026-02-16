@@ -7,18 +7,35 @@ from pathlib import Path
 ORG = "GradoIngenieriaInformatica-BaseDeDatosII-2025-2026"
 PREFIX = "Análisis y Selección de Bases de Datos NoSQL"
 
+# -----------------------------
+# Cargar respuestas desde secret
+# -----------------------------
 RESPUESTAS = json.loads(os.environ["RESPUESTAS_JSON"])
 ALUMNOS_RAW = os.environ["ALUMNOS_CSV"]
 
 # -----------------------------
 # Cargar alumnos
 # -----------------------------
-alumnos = {}
-lineas = ALUMNOS_RAW.strip().split("\n")
+import io
+f = io.StringIO(ALUMNOS_RAW)
+reader = csv.reader(f, delimiter=';')
 
-for linea in lineas[1:]:
-    nombre, login, numero, grupo = linea.split(",")
-    alumnos[login.strip()] = grupo.strip()
+alumnos = {}
+for linea in reader:
+    if len(linea) < 4:
+        print(f"Línea inválida (menos de 4 columnas), se salta: {linea}")
+        continue
+
+    nombre, login, numero, grupo = [x.strip() for x in linea[:4]]
+
+    # Si el grupo está vacío o null, saltar alumno
+    if grupo.lower() in ("", "null"):
+        print(f"Alumno sin grupo asignado, se salta: {nombre} ({login})")
+        continue
+
+    alumnos[login] = grupo.upper()
+
+print(f"Alumnos válidos cargados: {len(alumnos)}")
 
 # -----------------------------
 # Obtener repos
@@ -39,7 +56,7 @@ resultados = []
 for repo in repos_filtrados:
 
     print("Evaluando:", repo)
-    subprocess.run(["gh", "repo", "clone", f"{ORG}/{repo}"])
+    subprocess.run(["gh", "repo", "clone", f"{ORG}/{repo}"], check=True)
 
     login = repo.split("-")[-1]
 
@@ -73,7 +90,6 @@ for repo in repos_filtrados:
             errores = []
 
             for i in range(1, 4):
-
                 archivo = path_respuestas / f"respuesta{i}.txt"
 
                 if not archivo.exists():
@@ -92,7 +108,7 @@ for repo in repos_filtrados:
                     errores.append(f"RESPUESTA_{i}_TIPO_INCORRECTO")
                     continue
 
-                if not any(p.lower() in texto for p in esperado["palabras"]):
+                if not any(p.lower() in texto for p in esperado["keywords"]):
                     errores.append(f"RESPUESTA_{i}_CONTENIDO_INCORRECTO")
                     continue
 
@@ -132,7 +148,7 @@ Si considera que existe un error, puede solicitar revisión.
         "--repo", f"{ORG}/{repo}",
         "--title", "Resultado Evaluación Oficial",
         "--body", cuerpo
-    ])
+    ], check=True)
 
 # -----------------------------
 # Exportar resumen
