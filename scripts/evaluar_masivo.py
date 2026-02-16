@@ -68,9 +68,18 @@ repos = json.loads(repos_json)
 repos_filtrados = [r["name"] for r in repos if PREFIX in r["name"]]
 
 # Crear un diccionario de repos por login
+# Crear diccionario de repos por login correctamente
 repos_dict = {}
 for r in repos_filtrados:
-    login = r.split("-")[-1].lower()  # detectar login
+    # Normalizamos repo y PREFIX (quitando acentos y pasando a minúsculas)
+    repo_normalizado = r.lower()
+    prefix_normalizado = PREFIX.lower()
+    for acento, repl in [("á","a"),("é","e"),("í","i"),("ó","o"),("ú","u")]:
+        repo_normalizado = repo_normalizado.replace(acento, repl)
+        prefix_normalizado = prefix_normalizado.replace(acento, repl)
+
+    # Extraemos login eliminando el prefix y posibles guiones iniciales
+    login = repo_normalizado.replace(prefix_normalizado, "").lstrip("-")
     repos_dict[login] = r
 
 resultados = []
