@@ -1,0 +1,10 @@
+name: ZZ Test Manual
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Workflows funcionan"
