@@ -9,7 +9,7 @@ import io
 # Configuración
 # -----------------------------
 ORG = "GradoIngenieriaInformatica"  # Organización real
-PREFIX = "Análisis y Selección de Bases de Datos NoSQL"
+PREFIX = "an-lisis-y-selecci-n-de-bases-de-datos-nosql"
 
 # -----------------------------
 # Cargar respuestas desde secret
@@ -67,20 +67,13 @@ except subprocess.CalledProcessError as e:
 repos = json.loads(repos_json)
 repos_filtrados = [r["name"] for r in repos if PREFIX in r["name"]]
 
-# Crear un diccionario de repos por login
 # Crear diccionario de repos por login correctamente
 repos_dict = {}
-for r in repos_filtrados:
-    # Normalizamos repo y PREFIX (quitando acentos y pasando a minúsculas)
-    repo_normalizado = r.lower()
-    prefix_normalizado = PREFIX.lower()
-    for acento, repl in [("á","a"),("é","e"),("í","i"),("ó","o"),("ú","u")]:
-        repo_normalizado = repo_normalizado.replace(acento, repl)
-        prefix_normalizado = prefix_normalizado.replace(acento, repl)
+for login in alumnos:
+    repo_name = f"{PREFIX_REPO}{login}"
+    repos_dict[login] = repo_name
+    print("Repo esperado:", repo_name)
 
-    # Extraemos login eliminando el prefix y posibles guiones iniciales
-    login = repo_normalizado.replace(prefix_normalizado, "").lstrip("-")
-    repos_dict[login] = r
 
 resultados = []
 
