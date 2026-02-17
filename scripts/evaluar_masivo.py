@@ -65,12 +65,17 @@ except subprocess.CalledProcessError as e:
 repos = json.loads(repos_json)
 repos_filtrados = [r["name"] for r in repos if PREFIX in r["name"]]
 
-# Crear diccionario de repos por login
+# Crear diccionario REAL de repos respetando mayúsculas originales
 repos_dict = {}
-for github_login in alumnos:
-    repo_name = f"{PREFIX}-{github_login}"
-    repos_dict[github_login] = repo_name
-    print("Repo esperado:", repo_name)
+
+for r in repos_filtrados:
+    # Extraer login desde el nombre real del repo
+    login_real = r.split("-")[-1]
+    repos_dict[login_real.lower()] = r  # clave en minúscula, valor nombre real
+
+print("Repos detectados correctamente:")
+for k, v in repos_dict.items():
+    print(k, "->", v)
 
 resultados = []
 
