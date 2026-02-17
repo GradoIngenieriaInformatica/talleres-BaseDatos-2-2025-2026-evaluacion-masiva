@@ -68,10 +68,13 @@ repos_filtrados = [r["name"] for r in repos if PREFIX in r["name"]]
 # Crear diccionario REAL de repos respetando mayúsculas originales
 repos_dict = {}
 
+base_repo = "an-lisis-y-selecci-n-de-bases-de-datos-nosql-"
+
 for r in repos_filtrados:
-    # Extraer login desde el nombre real del repo
-    login_real = r.split("-")[-1]
-    repos_dict[login_real.lower()] = r  # clave en minúscula, valor nombre real
+    if r.startswith(base_repo):
+        # Extraer login completo respetando guiones y mayúsculas
+        login_real = r[len(base_repo):]
+        repos_dict[login_real.lower()] = r  # clave minúscula, valor nombre real
 
 print("Repos detectados correctamente:")
 for k, v in repos_dict.items():
