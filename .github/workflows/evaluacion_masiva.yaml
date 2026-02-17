@@ -25,7 +25,7 @@ jobs:
 
       - name: Ejecutar evaluacion
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.ORG_PAT  }}
           RESPUESTAS_JSON: ${{ secrets.RESPUESTAS_JSON }}
           ALUMNOS_CSV: ${{ secrets.ALUMNOS_CSV }}
         run: python scripts/evaluar_masivo.py
